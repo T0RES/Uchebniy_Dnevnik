@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Учебный трекер - управление заданиями по предметам">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Трекер">
+    
+    <!-- ОПТИМИЗАЦИЯ: Preconnect к Supabase для ускорения загрузки -->
+    <link rel="preconnect" href="https://viqiyirgbwhpsrdnmsdo.supabase.co">
+    <link rel="dns-prefetch" href="https://viqiyirgbwhpsrdnmsdo.supabase.co">
+    
+    <title>Учебный Трекер</title>
+    <link rel="manifest" href="./manifest.json">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Предотвращение белой полосы при загрузке */
+        html {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+            padding-bottom: 100px;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px 0;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            font-size: 16px;
+            margin-bottom: 20px;
+            transition: border-color 0.2s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #6366f1;
+        }
+
+        .subjects-grid {
+            display: grid;
+            gap: 20px;
+        }
+
+        .subject-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .subject-card:active {
+            transform: scale(0.98);
+        }
+
+        .subject-card:hover {
+            transform: translateY(-5px);
+            border-color: #6366f1;
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(248, 113, 113, 0.9);
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: all 0.2s;
+        }
+
+        .delete-btn:hover {
+            background: #ef4444;
+            transform: scale(1.1);
+        }
+
+        .subject-image {
+            width: 100%;
+            height: 150px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            object-fit: cover;
+        }
+
+        .subject-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .subject-time {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .add-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            border: none;
+            color: white;
+            font-size: 32px;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            transition: transform 0.2s;
+        }
+
+        .add-btn:active {
+            transform: scale(0.95);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1a1a2e;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .modal-header {
+            font-size: 24px;
+            margin-bottom: 25px;
+            font-weight: 600;
+        }
+
+        .pin-container {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 30px 0;
+        }
+
+        .pin-digit {
+            width: 50px;
+            height: 60px;
+            text-align: center;
+            font-size: 28px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+        }
+
+        .pin-digit:focus {
+            outline: none;
+            border-color: #6366f1;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .form-input,
+        .form-select,
+        .form-textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            font-size: 16px;
+            transition: border-color 0.2s;
+            font-family: inherit;
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .form-input:focus,
+        .form-select:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: #6366f1;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            position: sticky;
+            bottom: 0;
+            padding: 12px 0 4px;
+            background: #1e293b;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            color: white;
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .btn-secondary:active {
+            transform: scale(0.98);
+        }
+
+        .error-message {
+            color: #f87171;
+            font-size: 14px;
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .file-upload-label {
+            display: block;
+            padding: 14px 20px;
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            color: white;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .file-upload-label:active {
+            transform: scale(0.98);
+        }
+
+        .file-upload-label.disabled {
+            background: rgba(255, 255, 255, 0.2);
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .file-upload-input {
+            display: none;
+        }
+
+        .preview-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .preview-wrapper {
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .preview-img {
+            width: 100%;
+            height: 130px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .preview-delete {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: rgba(248, 113, 113, 0.95);
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            font-weight: bold;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #6366f1;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loading-text {
+            margin-top: 20px;
+            color: #fff;
+            font-size: 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(60px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Стили для детального просмотра предмета */
+        .detail-description {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 12px;
+            line-height: 1.6;
+            margin-bottom: 15px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
+        }
+
+        .detail-images {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 15px 0;
+        }
+
+        .detail-img {
+            width: 100%;
+            height: auto;
+            max-height: 340px;
+            object-fit: contain;
+            border-radius: 12px;
+            cursor: pointer;
+            background: rgba(255,255,255,0.04);
+            transition: transform 0.2s;
+        }
+
+        .detail-img:active {
+            transform: scale(0.98);
+        }
+
+        @media (min-width: 600px) {
+            .detail-images {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+                gap: 14px;
+            }
+            .detail-img {
+                height: 160px;
+                object-fit: cover;
+            }
+        }
+
+        .image-viewer {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .image-viewer.active {
+            display: flex;
+        }
+
+        .image-viewer-content {
+            max-width: 90vw;
+            max-height: 90vh;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        .image-viewer-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+
+        /* Счётчик фото */
+        .photo-count-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .photo-count-row #photoCounter {
+            color: #6366f1;
+            font-weight: 700;
+        }
+
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .pin-digit {
+                width: 45px;
+                height: 55px;
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-overlay" id="globalLoading">
+        <div style="text-align: center;">
+            <div class="loading-spinner"></div>
+            <div class="loading-text" id="loadingText">Загрузка...</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>📚 Учебный Трекер</h1>
+        </div>
+
+        <input type="text" class="search-input" id="searchInput" placeholder="🔍 Поиск предметов...">
+
+        <div class="subjects-grid" id="subjectsGrid"></div>
+
+        <button class="add-btn" id="addBtn">+</button>
+    </div>
+
+    <div class="modal" id="pinModal">
+        <div class="modal-content">
+            <div class="modal-header">Введите PIN-код</div>
+            <div class="pin-container">
+                <input type="tel" class="pin-digit" id="pin1" maxlength="1" inputmode="numeric">
+                <input type="tel" class="pin-digit" id="pin2" maxlength="1" inputmode="numeric">
+                <input type="tel" class="pin-digit" id="pin3" maxlength="1" inputmode="numeric">
+                <input type="tel" class="pin-digit" id="pin4" maxlength="1" inputmode="numeric">
+            </div>
+            <div class="error-message" id="pinError"></div>
+        </div>
+    </div>
+
+    <div class="modal" id="addSubjectModal">
+        <div class="modal-content">
+            <div class="modal-header">Добавить предмет</div>
+            <div class="form-group">
+                <label class="form-label">Название предмета</label>
+                <input type="text" class="form-input" id="subjectNameInput" placeholder="Например: Математика">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Обложка</label>
+                <label class="file-upload-label" for="subjectImageInput">📷 Загрузить фото</label>
+                <input type="file" class="file-upload-input" id="subjectImageInput" accept="image/*">
+                <div class="preview-container" id="subjectImagePreview"></div>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-secondary" id="cancelSubjectBtn">Отменить</button>
+                <button class="btn btn-primary" id="saveSubjectBtn">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="deleteModal">
+        <div class="modal-content">
+            <div class="modal-header">Подтвердите удаление</div>
+            <p style="margin-bottom: 25px; color: rgba(255, 255, 255, 0.7);">
+                Вы уверены, что хотите удалить этот предмет?
+            </p>
+            <div class="btn-group">
+                <button class="btn btn-secondary" id="cancelDeleteBtn">Отменить</button>
+                <button class="btn btn-primary" id="confirmDeleteBtn">Удалить</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="detailModal">
+        <div class="modal-content">
+            <div class="modal-header" id="detailTitle"></div>
+            <div id="detailContent"></div>
+            <div class="btn-group">
+                <button class="btn btn-secondary" id="closeDetailBtn">Закрыть</button>
+                <button class="btn btn-primary" id="editTaskBtn">Редактировать</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="editTaskModal">
+        <div class="modal-content">
+            <div class="modal-header">Редактировать задание</div>
+            <div class="form-group">
+                <label class="form-label">Описание задания</label>
+                <textarea class="form-textarea" id="taskDescInput" placeholder="Введите описание"></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Фото заданий</label>
+                <div class="photo-count-row">
+                    <span>📷 Максимум 3 фотографии</span>
+                    <span id="photoCounter">(0/3)</span>
+                </div>
+                <label class="file-upload-label" for="taskImagesInput" id="taskImagesLabel">
+                    📷 Загрузить фото
+                </label>
+                <input type="file" class="file-upload-input" id="taskImagesInput" accept="image/*" multiple>
+                <div class="preview-container" id="taskImagesPreview"></div>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-secondary" id="cancelTaskBtn">Отменить</button>
+                <button class="btn btn-primary" id="saveTaskBtn">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="image-viewer" id="imageViewer">
+        <button class="image-viewer-close" id="closeImageViewer">×</button>
+        <img class="image-viewer-content" id="viewerImage" alt="Просмотр">
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://viqiyirgbwhpsrdnmsdo.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpcWl5aXJnYndocHNyZG5tc2RvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4NDY2NDYsImV4cCI6MjA4NDQyMjY0Nn0.gRYnXNGVk6YGReUo8iVi22FgigwMpa-ywrTCf8crWk4';
+        const PIN = '9354';
+
+        let currentAction = null;
+        let currentSubjectId = null;
+        let deleteSubjectId = null;
+        let taskImagesData = [];
+        let cachedSubjects = [];
+        let isLoading = false;
+        let isSaving = false;
+        let lastLoadTime = 0;
+
+        // ✅ УБРАНО ОГРАНИЧЕНИЕ НА ВЕС ФАЙЛА
+        // const MAX_FILE_SIZE = 5 * 1024 * 1024; // УДАЛЕНО
+        const MAX_TASK_IMAGES = 3; 
+        const MIN_LOAD_INTERVAL = 10000;
+
+        // ОПТИМИЗАЦИЯ: Улучшенная функция сжатия изображений с прогрессивным качеством
+        async function compressImage(file, maxWidth = 1200, quality = 0.8) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onerror = () => reject(new Error('Ошибка чтения файла'));
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onerror = () => reject(new Error('Поврежденное изображение'));
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+
+                        // Уменьшаем размер, если больше maxWidth
+                        if (width > maxWidth) {
+                            height = (height * maxWidth) / width;
+                            width = maxWidth;
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+
+                        const ctx = canvas.getContext('2d');
+                        
+                        // ОПТИМИЗАЦИЯ: Улучшенное качество рендеринга
+                        ctx.imageSmoothingEnabled = true;
+                        ctx.imageSmoothingQuality = 'high';
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        // Конвертируем в base64 с сжатием
+                        const compressed = canvas.toDataURL('image/jpeg', quality);
+                        resolve(compressed);
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function updatePhotoCounter() {
+            const counter = document.getElementById('photoCounter');
+            const input = document.getElementById('taskImagesInput');
+            const label = document.getElementById('taskImagesLabel');
+            
+            if (!counter || !input || !label) return;
+            
+            const count = taskImagesData.length;
+            counter.textContent = `(${count}/${MAX_TASK_IMAGES})`;
+            
+            if (count >= MAX_TASK_IMAGES) {
+                input.disabled = true;
+                label.classList.add('disabled');
+                label.textContent = '✓ Максимум достигнут';
+            } else {
+                input.disabled = false;
+                label.classList.remove('disabled');
+                label.textContent = '📷 Загрузить фото';
+            }
+        }
+
+        function showGlobalLoading(text = 'Загрузка...') {
+            document.getElementById('loadingText').textContent = text;
+            document.getElementById('globalLoading').classList.add('active');
+        }
+
+        function hideGlobalLoading() {
+            document.getElementById('globalLoading').classList.remove('active');
+        }
+
+        // ОПТИМИЗАЦИЯ: Debounce для запросов
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        async function supabaseRequest(endpoint, options = {}) {
+            const url = `${SUPABASE_URL}/rest/v1/${endpoint}`;
+            const headers = {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+            };
+
+            const response = await fetch(url, {
+                ...options,
+                headers: { ...headers, ...options.headers }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const text = await response.text();
+            return text ? JSON.parse(text) : null;
+        }
+
+        async function loadSubjects() {
+            const now = Date.now();
+            if (now - lastLoadTime < MIN_LOAD_INTERVAL) {
+                renderSubjects(cachedSubjects);
+                return;
+            }
+
+            if (isLoading) return;
+            
+            isLoading = true;
+            lastLoadTime = now;
+
+            try {
+                const data = await supabaseRequest('subjects?select=*&order=created_at.desc');
+                cachedSubjects = data || [];
+                renderSubjects(cachedSubjects);
+            } catch (error) {
+                console.error('Ошибка загрузки:', error);
+                renderSubjects(cachedSubjects);
+            } finally {
+                isLoading = false;
+            }
+        }
+
+        function renderSubjects(subjects) {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = subjects.filter(s => 
+                s.name.toLowerCase().includes(searchTerm)
+            );
+
+            const grid = document.getElementById('subjectsGrid');
+            
+            if (filtered.length === 0) {
+                grid.innerHTML = '<div style="text-align: center; color: rgba(255,255,255,0.5); padding: 40px;">Предметы не найдены</div>';
+                return;
+            }
+
+            // ОПТИМИЗАЦИЯ: Используем DocumentFragment для улучшения производительности
+            const fragment = document.createDocumentFragment();
+            
+            filtered.forEach(subject => {
+                const card = document.createElement('div');
+                card.className = 'subject-card';
+                card.onclick = () => showSubjectDetail(subject.id);
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-btn';
+                deleteBtn.textContent = '×';
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    deleteSubjectId = subject.id;
+                    openModal('deleteModal');
+                };
+
+                const imageContainer = document.createElement('div');
+                if (subject.image_url) {
+                    const img = document.createElement('img');
+                    img.className = 'subject-image';
+                    img.src = subject.image_url;
+                    img.alt = subject.name;
+                    // ОПТИМИЗАЦИЯ: Lazy loading для изображений
+                    img.loading = 'lazy';
+                    imageContainer.appendChild(img);
+                } else {
+                    imageContainer.className = 'subject-image';
+                    imageContainer.textContent = '📖';
+                }
+
+                const title = document.createElement('div');
+                title.className = 'subject-title';
+                title.textContent = subject.name;
+
+                const time = document.createElement('div');
+                time.className = 'subject-time';
+                time.textContent = new Date(subject.created_at).toLocaleString('ru-RU');
+
+                card.appendChild(deleteBtn);
+                card.appendChild(imageContainer);
+                card.appendChild(title);
+                card.appendChild(time);
+                
+                fragment.appendChild(card);
+            });
+            
+            grid.innerHTML = '';
+            grid.appendChild(fragment);
+        }
+
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        document.getElementById('addBtn').addEventListener('click', () => {
+            currentAction = 'add';
+            openModal('pinModal');
+            setTimeout(() => document.getElementById('pin1').focus(), 100);
+        });
+
+        const pinInputs = [
+            document.getElementById('pin1'),
+            document.getElementById('pin2'),
+            document.getElementById('pin3'),
+            document.getElementById('pin4')
+        ];
+
+        pinInputs.forEach((input, index) => {
+            input.addEventListener('input', (e) => {
+                const value = e.target.value;
+                
+                if (!/^\d*$/.test(value)) {
+                    e.target.value = '';
+                    return;
+                }
+
+                if (value && index < 3) {
+                    pinInputs[index + 1].focus();
+                }
+
+                if (index === 3 && value) {
+                    checkPin();
+                }
+            });
+
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                    pinInputs[index - 1].focus();
+                }
+            });
+        });
+
+        async function checkPin() {
+            const enteredPin = pinInputs.map(i => i.value).join('');
+            
+            if (enteredPin === PIN) {
+                closeModal('pinModal');
+                pinInputs.forEach(i => i.value = '');
+                document.getElementById('pinError').textContent = '';
+
+                if (currentAction === 'add') {
+                    openModal('addSubjectModal');
+                } else if (currentAction === 'edit') {
+                    await openEditTaskModal();
+                }
+            } else {
+                document.getElementById('pinError').textContent = 'Неверный PIN-код';
+                pinInputs.forEach(i => i.value = '');
+                pinInputs[0].focus();
+            }
+        }
+
+        let subjectImageData = null;
+
+        document.getElementById('subjectImageInput').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // ✅ УБРАНА ПРОВЕРКА РАЗМЕРА ФАЙЛА
+            showGlobalLoading('Обработка изображения...');
+
+            try {
+                subjectImageData = await compressImage(file, 800, 0.7);
+                
+                const preview = document.getElementById('subjectImagePreview');
+                preview.innerHTML = `
+                    <div class="preview-wrapper">
+                        <img src="${subjectImageData}" class="preview-img" alt="Preview">
+                    </div>
+                `;
+                
+                hideGlobalLoading();
+            } catch (error) {
+                hideGlobalLoading();
+                alert('Ошибка обработки изображения: ' + error.message);
+                e.target.value = '';
+            }
+        });
+
+        document.getElementById('saveSubjectBtn').addEventListener('click', async () => {
+            if (isSaving) return;
+            
+            const name = document.getElementById('subjectNameInput').value.trim();
+            
+            if (!name) {
+                alert('Введите название предмета');
+                return;
+            }
+
+            isSaving = true;
+            showGlobalLoading('Сохранение предмета...');
+
+            try {
+                await supabaseRequest('subjects', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        name,
+                        image_url: subjectImageData,
+                        description: '',
+                        task_images: []
+                    })
+                });
+
+                closeModal('addSubjectModal');
+                
+                lastLoadTime = 0;
+                await loadSubjects();
+
+                document.getElementById('subjectNameInput').value = '';
+                document.getElementById('subjectImageInput').value = '';
+                document.getElementById('subjectImagePreview').innerHTML = '';
+                subjectImageData = null;
+            } catch (error) {
+                console.error('Ошибка сохранения:', error);
+                alert('Ошибка сохранения. Проверьте подключение к интернету.');
+            } finally {
+                hideGlobalLoading();
+                isSaving = false;
+            }
+        });
+
+        document.getElementById('cancelSubjectBtn').addEventListener('click', () => {
+            closeModal('addSubjectModal');
+            document.getElementById('subjectNameInput').value = '';
+            document.getElementById('subjectImageInput').value = '';
+            document.getElementById('subjectImagePreview').innerHTML = '';
+            subjectImageData = null;
+        });
+
+        document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
+            if (!deleteSubjectId || isSaving) return;
+
+            isSaving = true;
+            showGlobalLoading('Удаление...');
+
+            try {
+                await supabaseRequest(`subjects?id=eq.${deleteSubjectId}`, {
+                    method: 'DELETE'
+                });
+
+                closeModal('deleteModal');
+                
+                lastLoadTime = 0;
+                await loadSubjects();
+            } catch (error) {
+                console.error('Ошибка удаления:', error);
+                alert('Ошибка удаления. Проверьте подключение к интернету.');
+            } finally {
+                hideGlobalLoading();
+                isSaving = false;
+                deleteSubjectId = null;
+            }
+        });
+
+        document.getElementById('cancelDeleteBtn').addEventListener('click', () => {
+            closeModal('deleteModal');
+            deleteSubjectId = null;
+        });
+
+        async function showSubjectDetail(id) {
+            showGlobalLoading('Загрузка...');
+
+            try {
+                // Пытаемся найти предмет в кеше
+                let subject = cachedSubjects.find(s => s.id === id);
+                
+                // Если не нашли в кеше, загружаем из API
+                if (!subject) {
+                    showGlobalLoading('Загрузка задания...');
+                    const subjects = await supabaseRequest(`subjects?id=eq.${id}&select=*`);
+                    subject = subjects && subjects[0];
+                    hideGlobalLoading();
+                }
+                
+                if (!subject) {
+                    alert('Предмет не найден');
+                    return;
+                }
+
+                document.getElementById('detailTitle').textContent = subject.name;
+
+                let html = '';
+                if (subject.description) {
+                    html += `<div class="detail-description">${subject.description}</div>`;
+                } else {
+                    html += '<p style="color: rgba(255, 255, 255, 0.5); text-align: center; padding: 40px;">Описание отсутствует</p>';
+                }
+
+                // Строгая валидация task_images
+                if (subject.task_images && Array.isArray(subject.task_images) && subject.task_images.length > 0) {
+                    html += '<div class="detail-images">';
+                    subject.task_images.forEach((img) => {
+                        if (img && typeof img === 'string' && img.startsWith('data:image')) {
+                            html += `<img src="${img}" class="detail-img" onclick="openImageViewer('${img}')" loading="lazy" alt="Задание">`;
+                        }
+                    });
+                    html += '</div>';
+                }
+
+                const timeText = formatTime(new Date(subject.updated_at));
+                html += `<p style="font-size: 13px; color: rgba(255, 255, 255, 0.5); margin-top: 15px;">Обновлено: ${timeText}</p>`;
+
+                currentSubjectId = id;
+                hideGlobalLoading();
+
+                document.getElementById('detailContent').innerHTML = html;
+                openModal('detailModal');
+            } catch (error) {
+                console.error('Ошибка загрузки предмета:', error);
+                hideGlobalLoading();
+                alert('Ошибка загрузки задания');
+            }
+        }
+
+        function formatTime(date) {
+            const months = ['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
+            const d   = date.getDate();
+            const mon = months[date.getMonth()];
+            const h   = String(date.getHours()).padStart(2,'0');
+            const m   = String(date.getMinutes()).padStart(2,'0');
+            return `${d} ${mon}, ${h}:${m}`;
+        }
+
+        function openImageViewer(src) {
+            document.getElementById('viewerImage').src = src;
+            document.getElementById('imageViewer').classList.add('active');
+        }
+
+        document.getElementById('closeImageViewer').addEventListener('click', () => {
+            document.getElementById('imageViewer').classList.remove('active');
+        });
+
+        document.getElementById('imageViewer').addEventListener('click', (e) => {
+            if (e.target.id === 'imageViewer') {
+                document.getElementById('imageViewer').classList.remove('active');
+            }
+        });
+
+        document.getElementById('closeDetailBtn').addEventListener('click', () => {
+            closeModal('detailModal');
+        });
+
+        document.getElementById('editTaskBtn').addEventListener('click', () => {
+            closeModal('detailModal');
+            currentAction = 'edit';
+            openModal('pinModal');
+            setTimeout(() => document.getElementById('pin1').focus(), 100);
+        });
+
+        async function openEditTaskModal() {
+            if (!currentSubjectId) return;
+
+            try {
+                const data = await supabaseRequest(`subjects?id=eq.${currentSubjectId}`);
+                const subject = data[0];
+
+                document.getElementById('taskDescInput').value = subject.description || '';
+                taskImagesData = subject.task_images || [];
+                
+                renderTaskImagesPreview();
+                openModal('editTaskModal');
+            } catch (error) {
+                console.error('Ошибка загрузки для редактирования:', error);
+                alert('Ошибка загрузки данных');
+            }
+        }
+
+        function renderTaskImagesPreview() {
+            const container = document.getElementById('taskImagesPreview');
+            if (!container) return;
+            
+            container.innerHTML = '';
+
+            taskImagesData.forEach((img, index) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'preview-wrapper';
+                wrapper.innerHTML = `
+                    <img src="${img}" class="preview-img" alt="Preview ${index + 1}" loading="lazy">
+                    <button class="preview-delete" onclick="window.removePreviewImage(${index})">×</button>
+                `;
+                container.appendChild(wrapper);
+            });
+            
+            updatePhotoCounter();
+        }
+
+        function removePreviewImage(index) {
+            taskImagesData.splice(index, 1);
+            renderTaskImagesPreview();
+        }
+
+        window.removePreviewImage = removePreviewImage;
+
+        document.getElementById('taskImagesInput').addEventListener('change', async (e) => {
+            const files = Array.from(e.target.files);
+            
+            if (taskImagesData.length >= MAX_TASK_IMAGES) {
+                alert('Достигнут максимум: 3 фотографии');
+                e.target.value = '';
+                updatePhotoCounter();
+                return;
+            }
+            
+            const availableSlots = MAX_TASK_IMAGES - taskImagesData.length;
+            
+            if (files.length === 0) {
+                return;
+            }
+            
+            if (files.length > availableSlots) {
+                alert(`Можно загрузить еще ${availableSlots} фото (максимум 3 всего)`);
+                e.target.value = '';
+                return;
+            }
+
+            // ✅ УБРАНА ПРОВЕРКА РАЗМЕРА ФАЙЛА
+
+            showGlobalLoading('Обработка фотографий...');
+            
+            try {
+                const compressionPromises = files.map(async (file) => {
+                    try {
+                        return await compressImage(file, 1200, 0.7);
+                    } catch (error) {
+                        console.error('Ошибка сжатия файла:', file.name, error);
+                        return null;
+                    }
+                });
+                
+                const results = await Promise.all(compressionPromises);
+                const compressedImages = results.filter(img => img !== null);
+                
+                if (compressedImages.length === 0) {
+                    hideGlobalLoading();
+                    alert('Не удалось обработать ни одно изображение');
+                    e.target.value = '';
+                    return;
+                }
+                
+                if (compressedImages.length < files.length) {
+                    alert(`Обработано ${compressedImages.length} из ${files.length} фото. Некоторые файлы повреждены.`);
+                }
+                
+                taskImagesData.push(...compressedImages);
+                
+                renderTaskImagesPreview();
+                document.getElementById('taskImagesInput').value = '';
+                hideGlobalLoading();
+            } catch (error) {
+                hideGlobalLoading();
+                alert('Ошибка обработки изображений: ' + error.message);
+                console.error(error);
+                e.target.value = '';
+            }
+        });
+
+        document.getElementById('saveTaskBtn').addEventListener('click', async () => {
+            if (isSaving) return;
+            
+            const desc = document.getElementById('taskDescInput').value.trim();
+            
+            isSaving = true;
+            showGlobalLoading('Сохранение задания...');
+
+            try {
+                await supabaseRequest(`subjects?id=eq.${currentSubjectId}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({
+                        description: desc,
+                        task_images: taskImagesData,
+                        updated_at: new Date().toISOString()
+                    })
+                });
+
+                closeModal('editTaskModal');
+                
+                lastLoadTime = 0;
+                await loadSubjects();
+
+                document.getElementById('taskDescInput').value = '';
+                taskImagesData = [];
+                const container = document.getElementById('taskImagesPreview');
+                if (container) container.innerHTML = '';
+            } catch (error) {
+                console.error('Ошибка сохранения задания:', error);
+                alert('Ошибка сохранения. Проверьте подключение к интернету.');
+            } finally {
+                hideGlobalLoading();
+                isSaving = false;
+            }
+        });
+
+        document.getElementById('cancelTaskBtn').addEventListener('click', () => {
+            closeModal('editTaskModal');
+            document.getElementById('taskDescInput').value = '';
+            taskImagesData = [];
+            const container = document.getElementById('taskImagesPreview');
+            if (container) container.innerHTML = '';
+            updatePhotoCounter();
+        });
+
+        // ОПТИМИЗАЦИЯ: Debounced search
+        let searchTimeout;
+        const debouncedSearch = debounce(() => {
+            renderSubjects(cachedSubjects);
+        }, 300);
+
+        document.getElementById('searchInput').addEventListener('input', debouncedSearch);
+
+        loadSubjects();
+
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    closeModal(modal.id);
+                }
+            });
+        });
+
+        // ОПТИМИЗАЦИЯ: Используем requestIdleCallback для фоновых обновлений
+        const scheduleBackgroundUpdate = () => {
+            if ('requestIdleCallback' in window) {
+                requestIdleCallback(() => {
+                    if (!isLoading && !document.hidden) {
+                        loadSubjects();
+                    }
+                });
+            } else {
+                setTimeout(() => {
+                    if (!isLoading && !document.hidden) {
+                        loadSubjects();
+                    }
+                }, 0);
+            }
+        };
+
+        setInterval(scheduleBackgroundUpdate, 30000);
+
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && !isLoading) {
+                loadSubjects();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const activeModal = document.querySelector('.modal.active');
+                if (activeModal) {
+                    closeModal(activeModal.id);
+                    if (activeModal.id === 'pinModal') {
+                        pinInputs.forEach(i => i.value = '');
+                        document.getElementById('pinError').textContent = '';
+                    }
+                }
+                
+                const imageViewer = document.getElementById('imageViewer');
+                if (imageViewer && imageViewer.classList.contains('active')) {
+                    imageViewer.classList.remove('active');
+                }
+            }
+        });
+
+        // Регистрация Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('[App] Service Worker зарегистрирован'))
+                    .catch(err => console.error('[App] Ошибка SW:', err));
+            });
+        }
+    </script>
+</body>
+</html>
